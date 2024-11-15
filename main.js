@@ -1,6 +1,6 @@
 $(document).ready(function () {
     //modal
-    var modal = $('#GaRutdaModal');
+    var modal = $('#NuLzModal');
     function closeModal() {
         $(modal).animate({
             opacity: 0
@@ -153,7 +153,7 @@ $(document).ready(function () {
     });
     //end delete file
     //upload
-    $('#GaRutdaup').on('change', function () {
+    $('#nulzup').on('change', function () {
         var formData = new FormData($('#form-upload')[0]);
 
         $.ajax({

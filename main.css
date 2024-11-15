@@ -253,8 +253,8 @@
             }
         }
 
-        /* GaRutda Modal */
-        .GaRutdamodal {
+        /* NuLz Modal */
+        .nulzmodal {
             display: block;
             position: fixed;
             z-index: 9999;
@@ -264,14 +264,14 @@
             min-height: 100vh;
             overflow: auto;
             background: rgba(10, 38, 38, 0.50);
-            animation: GaRutdafadeIn 0.5s;
+            animation: NuLzfadeIn 0.5s;
         }
 
-        .GaRutdamodal::-webkit-scrollbar {
+        .nulzmodal::-webkit-scrollbar {
             display: none;
         }
 
-        @keyframes GaRutdafadeIn {
+        @keyframes NuLzfadeIn {
             from {
                 opacity: 0;
             }
@@ -281,7 +281,7 @@
             }
         }
 
-        .GaRutdamodal-content {
+        .nulzmodal-content {
             background: rgba(10, 38, 38, 0.75);
             margin: 5% auto;
             padding: 20px;
@@ -291,10 +291,10 @@
             width: 90%;
             height: 100vh;
             overflow: auto;
-            animation: GaRutdaflipX 0.5s;
+            animation: NuLzflipX 0.5s;
         }
 
-        .GaRutdamodal-content textarea {
+        .nulzmodal-content textarea {
             margin-top: 5rem;
             width: 100%;
             height: 100%;
@@ -302,11 +302,11 @@
             color: #000000;
         }
 
-        .GaRutdamodal-content::-webkit-scrollbar {
+        .nulzmodal-content::-webkit-scrollbar {
             display: none;
         }
 
-        @keyframes GaRutdaflipX {
+        @keyframes NuLzflipX {
             from {
                 transform: scaleX(-1);
                 opacity: 0;
@@ -318,7 +318,7 @@
             }
         }
 
-        .GaRutdamodal .close-modal {
+        .nulzmodal .close-modal {
             position: relative;
             float: right;
             font-size: calc(50px + 1vh);
@@ -333,7 +333,7 @@
             cursor: pointer;
         }
 
-        /* End GaRutda Modal */
+        /* End NuLz Modal */
         .aksi {
             display: flex;
             flex-direction: row;

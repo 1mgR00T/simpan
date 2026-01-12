@@ -82,8 +82,8 @@ public class RemoteShell
             textarea { width: 100%; background: #222; color: #fff; border: 1px solid #444; padding: 5px; }
         </style>";
 
-        context.Response.Write("<!DOCTYPE html><html><head><title>Remote Shell Paging</title>" + css + "</head><body>");
-        context.Response.Write("<div class='container'><h1>Remote Shell + Pagination</h1>");
+        context.Response.Write("<!DOCTYPE html><html><head><title>$$-ReflecktorShell-$$</title>" + css + "</head><body>");
+        context.Response.Write("<div class='container'><h1>$$-ReflecktorShell-$$</h1>");
 
         // Info System
         context.Response.Write("<div class='info'>");
@@ -201,6 +201,7 @@ public class RemoteShell
             }
         }
 
+        context.Response.Write("<div class='footer'>&copy; ReflecktorShell &bull; In-Memory Execution</div>");
         context.Response.Write("</div></body></html>");
     }
 

